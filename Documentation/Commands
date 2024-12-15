@@ -1,0 +1,59 @@
+// CREATE BUSYBOX NODES
+
+ln -s /bin/busybox sh
+ln -s /bin/busybox mount
+ln -s /bin/busybox ls
+ln -s /bin/busybox cat
+ln -s /bin/busybox echo
+ln -s /bin/busybox umount
+
+// CREATE DEVICE NODES 
+
+mknod dev/console c 5 1
+mknod dev/null c 1 3
+mknod dev/tty c 5 0
+mknod dev/sda b 8 0  # If you are working with hard drives
+
+// CREATE SYSTEM CONFIGURATION
+
+echo '/dev/sda1 / ext4 defaults 0 1' > etc/fstab
+echo 'localhost' > etc/hostname
+echo -e "auto lo\niface lo inet loopback" > etc/network/interfaces
+echo '::sysinit:/etc/init.d/rcS' > etc/inittab
+
+// ADD Libraries needed for BIN
+
+ldd /bin/mount //check which bin need which lib
+cp -r /lib/x86_64-linux-gnu/libc.so* lib/
+cp -r /lib/x86_64-linux-gnu/libm.so* lib/
+
+
+cp -r /lib/x86_64-linux-gnu/libresolv.so.2 ~/Desktop/myiso2/initrd/lib/
+cp -r /lib/x86_64-linux-gnu/libc.so.6 ~/Desktop/myiso2/initrd/lib/
+cp -r /lib64/ld-linux-x86-64.so.2 ~/Desktop/myiso2/initrd/lib/
+
+
+// CREATE INIT SCRIPT
+
+touch sbin/init
+chmod +x sbin/init
+
+
+// CREATE INITRD.IMG & VERIFY
+
+Create:
+
+cd initrd
+find . | cpio -H newc -o > ../initrd.img
+
+Verify:
+
+mkdir testinitrd
+cd testinitrd
+cpio -idv < initrd.img
+
+
+// QEMU 
+
+qemu-system-x86_64 -cdrom myos.iso
+

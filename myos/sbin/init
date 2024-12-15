@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Mount virtual filesystems
+echo "Mounting /proc"
+mount -t proc none /proc
+
+echo "Mounting /sys"
+mount -t sysfs none /sys
+
+# Print a message
+echo "Welcome to Minimal CLI OS!"
+
+# Check if /bin/sh exists
+if [ ! -f /bin/sh ]; then
+    echo "Error: /bin/sh not found!"
+    exit 1
+fi
+
+# Start a shell
+echo "Starting /bin/sh"
+exec /bin/sh

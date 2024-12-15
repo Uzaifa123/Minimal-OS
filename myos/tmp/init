@@ -1,0 +1,12 @@
+#!/bin/sh
+# Mount necessary filesystems
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+
+# Load any necessary modules (e.g., for disk support)
+modprobe ext4
+modprobe scsi_mod
+
+# Switch root to the new root filesystem and run /bin/sh
+switch_root /mnt /bin/sh
