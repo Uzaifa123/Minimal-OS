@@ -1,0 +1,1 @@
+//test the created initrd.img by extracting and checkinh the content
