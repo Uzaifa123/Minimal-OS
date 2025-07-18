@@ -4,8 +4,8 @@
 
 ## ✅ STEP 1 — Set Up the Build Environment
 
-# Set up the build environment and install all necessary libraries on your Linux system.
-# You can use the following command to install all the tools:
+Set up the build environment and install all necessary libraries on your Linux system.
+You can use the following command to install all the tools:
 
 
         sudo apt install -y \
