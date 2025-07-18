@@ -43,11 +43,11 @@ You can use the following command to install all the tools:
 
     Use a default configuration to start with:
 
-            make defconfig
+        make defconfig
 
     (Optional) Launch a menu to customize configuration:
 
-            make menuconfig
+        make menuconfig
 
 
 3. **Build the Kernel:**
@@ -57,37 +57,92 @@ You can use the following command to install all the tools:
         make -j$(nproc)
 
 
-## 📦 STEP 3 — Add a Minimal Root Filesystem
+## 📦 STEP 3 — Create initramfs
+
+Create a minimalistic file system and package it into an initramfs archive. This is a temporary root filesystem that is loaded into memory by the kernel at boot time. It contains the /init program, which is the first user-space application run by the kernel.
+
+    // Add a Minimal Root Filesystem
+
+        mkdir -p initramfs/{bin,sbin,etc,proc,sys,usr/bin,usr/sbin}
+        cd initramfs
+
+
+    // Create an `init` script inside the `initramfs`. 
+    // This script is the first userspace program executed by the kernel after booting.
+    // 
+    // Note: This file is very important. Its purpose is to mount necessary filesystems,
+    // set up the environment, and launch a shell or other init process.
+    // 
+    // If you're writing `init` in C (instead of a shell script), 
+    // it should be compiled statically because, at this stage,
+    // no dynamic C runtime (like glibc or musl) is available.
+    // The `init` program is responsible for setting up the runtime environment
+    // for the rest of the system.
+
+
+    // Create init.c file 
+    // Use the following code sinppent as minimal init.c
+
+    #include <stdio.h>
+    #include <unistd.h>
+    #include <sys/mount.h>
+
+    int main() {
+        printf("Minimal-OS init started!\n");
+
+        // Mount virtual filesystems
+        mount("none", "/proc", "proc", 0, "");
+        mount("none", "/sys", "sysfs", 0, "");
+
+        // Launch BusyBox shell
+        execl("/bin/sh", "sh", NULL);
+
+        // If execl fails
+        perror("execl failed");
+        return 1;
+    }
+
+    gcc -static -o init init.c
+
+    // Copy it to your initramfs directory and make it executable
+    
+    cp init initramfs/
+    chmod +x initramfs/init
+
+
+
+
+## 📦 STEP 4 — Add a Minimal Root Filesystem
 
 You can create a basic initramfs using [BusyBox](https://busybox.net/) or your custom implementation of busybox:
 
-        // Create minimal filesystem
+    // Create minimal filesystem
 
-            mkdir -p initramfs/{bin,sbin,etc,proc,sys,usr/bin,usr/sbin}
-            cd initramfs
+        mkdir -p initramfs/{bin,sbin,etc,proc,sys,usr/bin,usr/sbin}
+        cd initramfs
 
-        // Compile and install BusyBox
+    // Compile and install BusyBox
 
-            wget https://busybox.net/downloads/busybox-1.36.1.tar.bz2
-            tar -xjf busybox-1.36.1.tar.bz2
-            cd busybox-1.36.1
-            make defconfig
-            make -j$(nproc)
-        
-        // CREATE BUSYBOX NODES
+        wget https://busybox.net/downloads/busybox-1.36.1.tar.bz2
+        tar -xjf busybox-1.36.1.tar.bz2
+        cd busybox-1.36.1
+        make defconfig
+        make -j$(nproc)
+    
+    // CREATE BUSYBOX NODES
 
-            ln -s /bin/busybox sh
-            ln -s /bin/busybox mount
-            ln -s /bin/busybox ls
-            ln -s /bin/busybox cat
-            ln -s /bin/busybox echo
-            ln -s /bin/busybox umount
+        ln -s /bin/busybox sh
+        ln -s /bin/busybox mount
+        ln -s /bin/busybox ls
+        ln -s /bin/busybox cat
+        ln -s /bin/busybox echo
+        ln -s /bin/busybox umount
 
-        // Create an `init` script in `initramfs`:
+    // Create an `init` script in `initramfs`:
 
-            cd ..
-            touch initramfs/init
-            chmod +x initramfs/init
+        cd ..
+        touch initramfs/init
+        chmod +x initramfs/init
 
 
 ## 🚀 STEP 3 — Run the Kernel with QEMU
