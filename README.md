@@ -34,9 +34,9 @@ You can use the following command to install all the tools:
 
 1. **Clone the Linux kernel source code:**
 
-    git clone https://github.com/torvalds/linux.git
-    
-    cd linux
+        git clone https://github.com/torvalds/linux.git
+        
+        cd linux
 
 
 2. **Configure the Kernel:**
