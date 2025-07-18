@@ -41,24 +41,54 @@ You can use the following command to install all the tools:
 
 2. **Configure the Kernel:**
 
-Use a default configuration to start with:
+    Use a default configuration to start with:
 
-make defconfig
+            make defconfig
 
-(Optional) Launch a menu to customize configuration:
+    (Optional) Launch a menu to customize configuration:
 
-make menuconfig
+            make menuconfig
 
 
 3. **Build the Kernel:**
 
-```bash
-make -j$(nproc)
-```
+    This will take a while and produce a `bzImage` file in `arch/x86/boot/`.
 
-> This will take a while and produce a `bzImage` file in `arch/x86/boot/`.
+        make -j$(nproc)
 
----
+
+## 📦 STEP 3 — Add a Minimal Root Filesystem
+
+You can create a basic initramfs using [BusyBox](https://busybox.net/) or your custom implementation of busybox:
+
+        // Create minimal filesystem
+
+            mkdir -p initramfs/{bin,sbin,etc,proc,sys,usr/bin,usr/sbin}
+            cd initramfs
+
+        // Compile and install BusyBox
+
+            wget https://busybox.net/downloads/busybox-1.36.1.tar.bz2
+            tar -xjf busybox-1.36.1.tar.bz2
+            cd busybox-1.36.1
+            make defconfig
+            make -j$(nproc)
+        
+        // CREATE BUSYBOX NODES
+
+            ln -s /bin/busybox sh
+            ln -s /bin/busybox mount
+            ln -s /bin/busybox ls
+            ln -s /bin/busybox cat
+            ln -s /bin/busybox echo
+            ln -s /bin/busybox umount
+
+        // Create an `init` script in `initramfs`:
+
+            cd ..
+            touch initramfs/init
+            chmod +x initramfs/init
+
 
 ## 🚀 STEP 3 — Run the Kernel with QEMU
 
@@ -72,30 +102,7 @@ qemu-system-x86_64 -kernel arch/x86/boot/bzImage
 
 ---
 
-## 📦 STEP 4 — (Optional) Add a Minimal Root Filesystem
 
-You can create a basic initramfs using [BusyBox](https://busybox.net/):
-
-```bash
-mkdir -p initramfs/{bin,sbin,etc,proc,sys,usr/bin,usr/sbin}
-cd initramfs
-
-# Compile and install BusyBox
-wget https://busybox.net/downloads/busybox-1.36.1.tar.bz2
-tar -xjf busybox-1.36.1.tar.bz2
-cd busybox-1.36.1
-make defconfig
-make -j$(nproc)
-make CONFIG_PREFIX=../ install
-```
-
-Create an `init` script in `initramfs`:
-
-```bash
-cd ..
-touch initramfs/init
-chmod +x initramfs/init
-```
 
 **Sample `init` file content:**
 
