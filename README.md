@@ -83,43 +83,105 @@ Create a minimalistic file system and package it into an initramfs archive. This
     // Create init.c file 
     // Use the following code sinppent as minimal init.c
 
-    #include <stdio.h>
-    #include <unistd.h>
-    #include <sys/mount.h>
+        #include <stdio.h>
+        #include <unistd.h>
+        #include <sys/mount.h>
 
-    int main() {
-        printf("Minimal-OS init started!\n");
+        int main() {
+            printf("Minimal-OS init started!\n");
 
-        // Mount virtual filesystems
-        mount("none", "/proc", "proc", 0, "");
-        mount("none", "/sys", "sysfs", 0, "");
+            // Mount virtual filesystems
+            mount("none", "/proc", "proc", 0, "");
+            mount("none", "/sys", "sysfs", 0, "");
 
-        // Launch BusyBox shell
-        execl("/bin/sh", "sh", NULL);
+            // Launch BusyBox shell
+            execl("/bin/sh", "sh", NULL);
 
-        // If execl fails
-        perror("execl failed");
-        return 1;
-    }
+            // If execl fails
+            perror("execl failed");
+            return 1;
+        }
 
-    gcc -static -o init init.c
+        gcc -static -o init init.c
 
     // Copy it to your initramfs directory and make it executable
+
+        cp init initramfs
+        chmod +x initramfs/init
+
+    // Compile and install BusyBox
+
+        wget https://busybox.net/downloads/busybox-1.36.1.tar.bz2
+        tar -xjf busybox-1.36.1.tar.bz2
+        cd busybox-1.36.1
+        make defconfig
+        make -j$(nproc)
     
-    cp init initramfs/
-    chmod +x initramfs/init
+    // Create busybox nodes
+
+        ln -s /bin/busybox sh
+        ln -s /bin/busybox mount
+        ln -s /bin/busybox ls
+        ln -s /bin/busybox cat
+        ln -s /bin/busybox echo
+        ln -s /bin/busybox umount
+
+    // Create initrd.img
+
+       cd initrd
+       find . | cpio -H newc -o > ../initrd.img
+
+## 📦 STEP 4 — Add a Main Root Filesystem
+
+Now we will build the main root filesystem, which lives on disk (or in a virtual disk image like ext4). This rootfs will contain:
+
+The Linux kernel
+The boot/ directory
+GRUB bootloader and configuration
+A minimal Linux userland (via BusyBox)
+
+This filesystem will be mounted and used by the system after booting, unlike initramfs which is a temporary RAM-based system.
+
+    // Create Root filesystem
+
+        mkdir -p rootfs/{boot/grub,bin,sbin,etc,proc,sys,dev,usr/bin,usr/sbin,tmp,var,home}
 
 
+    // Add the Linux Kernel and Initramfs
+
+        Copy your compiled kernel (bzImage) and initramfs.cpio.gz into the /boot directory:
+
+        cp path/to/bzImage rootfs/boot/vmlinuz
+        cp path/to/initram.img rootfs/boot/initram.img
 
 
-## 📦 STEP 4 — Add a Minimal Root Filesystem
+    // Install and Configure GRUB
 
-You can create a basic initramfs using [BusyBox](https://busybox.net/) or your custom implementation of busybox:
+    // Create a GRUB configuration file:
+       
+       nano rootfs/boot/grub/grub.cfg
 
-    // Create minimal filesystem
+    // Add this content:
 
-        mkdir -p initramfs/{bin,sbin,etc,proc,sys,usr/bin,usr/sbin}
-        cd initramfs
+        set timeout=5
+        set default=0
+
+        menuentry "minimal os" {
+
+            set root=(cd,gpt3)
+            linux /boot/bzimage root=/dev/sr0 init=init 
+            initrd /boot/initrd.img
+            boot
+        }
+
+
+    // Install GRUB on the disk (or image):
+
+        If using a disk image (e.g., rootfs.img), use:
+
+        sudo grub-install --root-directory=rootfs --target=i386-pc --boot-directory=rootfs/boot --modules="normal part_msdos ext2 multiboot" /dev/sdX
+        Replace /dev/sdX with your real or loop device.
+
 
     // Compile and install BusyBox
 
@@ -138,65 +200,12 @@ You can create a basic initramfs using [BusyBox](https://busybox.net/) or your c
         ln -s /bin/busybox echo
         ln -s /bin/busybox umount
 
-    // Create an `init` script in `initramfs`:
+    // Create /sbin/init
+    // BusyBox provides an init, or you can create your own:
 
-        cd ..
-        touch initramfs/init
-        chmod +x initramfs/init
+        ln -s /bin/busybox rootfs/sbin/init
 
-
-## 🚀 STEP 3 — Run the Kernel with QEMU
-
-Once built, run your kernel image using QEMU:
-
-```bash
-qemu-system-x86_64 -kernel arch/x86/boot/bzImage
-```
-
-> This boots the kernel directly without a root filesystem.
-
----
+    // Alternatively, write your own init.c, compile it statically, and place it at /sbin/init.
 
 
-
-**Sample `init` file content:**
-
-```sh
-#!/bin/sh
-mount -t proc none /proc
-mount -t sysfs none /sys
-echo "Welcome to Minimal-OS!"
-exec /bin/sh
-```
-
-Pack initramfs:
-
-```bash
-cd initramfs
-find . -print0 | cpio --null -ov --format=newc | gzip -9 > ../initramfs.cpio.gz
-```
-
----
-
-## 💻 STEP 5 — Boot Kernel with Initramfs
-
-Run the kernel with your initramfs:
-
-```bash
-qemu-system-x86_64 -kernel arch/x86/boot/bzImage -initrd ../initramfs.cpio.gz -nographic -append "console=ttyS0"
-```
-
-> This will boot your Minimal-OS and drop you into a shell inside QEMU.
-
----
-
-## 📚 Files and Structure
-
-| Path                    | Purpose                       |
-| ----------------------- | ----------------------------- |
-| `linux/`                | Kernel source directory       |
-| `initramfs/`            | Your root filesystem          |
-| `initramfs/init`        | Init script run by the kernel |
-| `initramfs.cpio.gz`     | Compressed rootfs image       |
-| `arch/x86/boot/bzImage` | Compiled Linux kernel image   |
-
+### INCOMPLETE
